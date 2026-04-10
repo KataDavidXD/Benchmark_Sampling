@@ -1,0 +1,20 @@
+[project]
+name = "benchmark-sampling"
+version = "0.1.0"
+description = "Sampling component for WTB RAG benchmark optimization"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+hmc = ["jax", "jaxlib"]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["benchmark*", "tests*"]
