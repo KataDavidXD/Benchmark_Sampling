@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from typing import Any, NamedTuple
 
 
@@ -225,7 +225,7 @@ class SamplingState:
             "budget_total": self.budget_total,
             "budget_used": self.budget_used,
             "strata_stats": {k: v.to_dict() for k, v in self.strata_stats.items()},
-            "sampler_state": self.sampler_state,
+            "sampler_state": _serialise_rng_state(self.sampler_state),
             "rng_state": _serialise_rng_state(self.rng_state),
             "history": [r.to_dict() for r in self.history],
             "realizations": [r.to_dict() for r in self.realizations],
@@ -242,7 +242,7 @@ class SamplingState:
             budget_total=d["budget_total"],
             budget_used=d["budget_used"],
             strata_stats={k: StratumStats.from_dict(v) for k, v in d["strata_stats"].items()},
-            sampler_state=d["sampler_state"],
+            sampler_state=_deserialise_rng_state(d["sampler_state"]),
             rng_state=_deserialise_rng_state(d["rng_state"]),
             history=[EvalRecord.from_dict(r) for r in d["history"]],
             realizations=[ItemRealization.from_dict(r) for r in d["realizations"]],
