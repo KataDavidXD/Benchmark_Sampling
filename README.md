@@ -1,6 +1,6 @@
 # Benchmark Sampling
 
-Research-grade sampling component for the WTB (Workflow Test Bench) RAG optimization framework. Estimates benchmark performance using minimal evaluation budget through stratified, Neyman-optimal, and Metropolis-Hastings adaptive sampling.
+Research-grade sampling component for the WTB (Workflow Test Bench) RAG optimization framework. The default is a seeded uniform random draw without replacement, which is the reference implementation choice used by the Agent-UCT integration and is compatible with the paper; proportional, Neyman-optimal, and Metropolis-Hastings allocation remain explicit alternatives.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ adapter = UltraDomainAdapter(
 
 engine = SamplingEngine(
     adapter=adapter,
-    method="neyman",       # "proportional" | "neyman" | "mh"
+    method="random",       # default; proportional | neyman | mh are opt-in
     budget=200,
     seed=42,
     eval_fn=lambda cfg, iid: my_rag_eval(cfg, iid),  # (config, item_id) -> float
@@ -57,13 +57,14 @@ result.save("sampling_result.json")
 
 | Method | Key Idea | When to Use |
 |--------|----------|-------------|
-| **proportional** | `n_h = B * N_h / N` | Default baseline, no variance estimates needed |
+| **random** | Uniform draw from the complete pool without replacement | Default reference policy for the Agent-UCT integration |
+| **proportional** | `n_h = B * N_h / N` | Explicit stratified baseline, no variance estimates needed |
 | **neyman** | `n_h = B * N_h * S_h / sum(N_k * S_k)` | When strata have different variances; runs a pilot phase first |
 | **mh** | MCMC search over allocation space | Large number of strata (>15); adaptive variance minimization |
 
 ### Method Aliases
 
-`"prop"`, `"optimal"`, `"metropolis"`, `"metropolis-hastings"` are accepted as aliases.
+`"uniform"`, `"simple-random"`, `"prop"`, `"optimal"`, `"metropolis"`, and `"metropolis-hastings"` are accepted as aliases.
 
 ## Supported Benchmarks
 
@@ -164,7 +165,7 @@ pytest tests/test_integration_ray_parallel.py -v
 ```python
 SamplingEngine(
     adapter=...,                    # BenchmarkAdapter instance (required)
-    method="proportional",          # "proportional" | "neyman" | "mh"
+    method="random",                # default; also proportional | neyman | mh
     budget=100,                     # Max items to evaluate
     seed=42,                        # RNG seed for reproducibility
     stratification_config=None,     # Auto-detected from adapter.name if None

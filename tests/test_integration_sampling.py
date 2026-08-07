@@ -12,18 +12,12 @@ import json
 import random
 from typing import Any
 
-import pytest
-
 from benchmark.sampling.engine import SamplingEngine, SamplingResult
-from benchmark.sampling.stratification import StratificationConfig
 from benchmark.sampling.types import (
     BenchmarkItem,
     Estimate,
-    ItemRealization,
     SamplingState,
-    StratumStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Synthetic data builders (mirror real schemas)
@@ -398,7 +392,16 @@ class TestMultiBenchmark:
         items = _make_ultradomain_items(n_per_domain=10)
         adapter = _SyntheticAdapter(items, "ultradomain")
 
-        for alias in ["proportional", "prop", "neyman", "optimal", "mh", "metropolis"]:
+        for alias in [
+            "random",
+            "uniform",
+            "proportional",
+            "prop",
+            "neyman",
+            "optimal",
+            "mh",
+            "metropolis",
+        ]:
             engine = SamplingEngine(
                 adapter=adapter,
                 method=alias,

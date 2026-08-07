@@ -1,10 +1,11 @@
-"""Unified facade for stratified / Neyman / MH sampling.
+"""Unified facade for random / stratified / Neyman / MH sampling.
 
 Entry point for the entire sampling subsystem. Orchestrates data loading,
 stratification, sampling, and estimation in a single ``engine.run()`` call.
 
 Supported methods:
-  - proportional: sample sizes proportional to stratum population (default)
+  - random:       uniform draw without replacement from the full pool (default)
+  - proportional: sample sizes proportional to stratum population
   - neyman:       two-phase Neyman optimal allocation (pilot -> variance estimate -> optimal)
   - mh:           Metropolis-Hastings adaptive allocation (iterative variance minimisation)
 
@@ -38,14 +39,14 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable
 
 from benchmark.sampling.adapters.base import BenchmarkAdapter
-from benchmark.sampling.budget import BudgetController
 from benchmark.sampling.estimator import SequentialEstimator, StoppingConfig
 from benchmark.sampling.samplers.base import BaseSampler
 from benchmark.sampling.samplers.mh import MetropolisHastingsSampler
+from benchmark.sampling.samplers.random import RandomSampler
 from benchmark.sampling.samplers.stratified import StratifiedSampler
 from benchmark.sampling.stratification import (
     StratificationConfig,
@@ -55,8 +56,8 @@ from benchmark.sampling.stratification import (
 )
 from benchmark.sampling.types import (
     BenchmarkItem,
-    EvalRecord,
     Estimate,
+    EvalRecord,
     ItemRealization,
     SamplingState,
     StratumStats,
@@ -91,6 +92,9 @@ class SamplingResult:
 
 
 _METHOD_ALIASES = {
+    "random": "random",
+    "uniform": "random",
+    "simple-random": "random",
     "proportional": "proportional",
     "prop": "proportional",
     "neyman": "neyman",
@@ -109,7 +113,7 @@ class SamplingEngine:
     adapter:
         A loaded ``BenchmarkAdapter`` (FreshWiki or UltraDomain).
     method:
-        ``"proportional"`` | ``"neyman"`` | ``"mh"``
+        ``"random"`` | ``"proportional"`` | ``"neyman"`` | ``"mh"``
     budget:
         Maximum number of items to draw.
     seed:
@@ -136,7 +140,7 @@ class SamplingEngine:
     def __init__(
         self,
         adapter: BenchmarkAdapter,
-        method: str = "proportional",
+        method: str = "random",
         budget: int = 100,
         seed: int = 42,
         stratification_config: StratificationConfig | None = None,
@@ -148,7 +152,14 @@ class SamplingEngine:
         stopping: StoppingConfig | None = None,
     ) -> None:
         self._adapter = adapter
-        self._method = _METHOD_ALIASES.get(method.lower(), method.lower())
+        if not isinstance(method, str) or not method.strip():
+            raise ValueError("method must be a non-empty string")
+        normalized_method = _METHOD_ALIASES.get(method.casefold())
+        if normalized_method is None:
+            raise ValueError(
+                "method must be random, proportional, neyman, or mh"
+            )
+        self._method = normalized_method
         self._budget = budget
         self._seed = seed
         self._eval_fn = eval_fn
@@ -189,6 +200,8 @@ class SamplingEngine:
     # ------------------------------------------------------------------
 
     def _build_sampler(self) -> BaseSampler:
+        if self._method == "random":
+            return RandomSampler(seed=self._seed)
         if self._method == "mh":
             return MetropolisHastingsSampler(
                 rng_seed=self._seed,
